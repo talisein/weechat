@@ -520,6 +520,51 @@ xfer_alloc ()
 }
 
 /*
+ * Tests if the given nick is an auto_accept_nick
+ *
+ * Returns:
+ *  0: False
+ *  1: True
+ */
+
+static int
+xfer_auto_accept_nick (const char *remote_nick, const char *server)
+{
+    int size, i;
+    int ret = 0;
+    const char *config_nicks = weechat_config_string (xfer_config_file_auto_accept_nicks);
+    char **nicks = weechat_string_split (config_nicks, ",", 0, 0, &size);
+
+    if ( size > 0 )
+    {
+        for ( i = 0; i < size; ++i )
+        {
+            char *server_sep = strchr (nicks[i], '.');
+            if ( !server_sep )
+            {
+	            if ( weechat_strcasecmp (remote_nick, nicks[i]) == 0 )
+                {
+                    ret = 1;
+                    break;
+                }
+            }
+            else
+            {
+	            if ( weechat_strncasecmp (server, nicks[i], server_sep - nicks[i]) == 0 
+	                 && weechat_strcasecmp (remote_nick, server_sep + 1) == 0 )
+                {
+                    ret = 1;
+                    break;
+                }
+            }
+        }
+        weechat_string_free_split (nicks);
+    }
+
+    return ret;
+}
+
+/*
  * Adds a xfer to list.
  *
  * Returns pointer to new xfer, NULL if error.
@@ -681,7 +726,9 @@ xfer_new (const char *plugin_name, const char *plugin_id,
     if ( ( (type == XFER_TYPE_FILE_RECV)
                 && (weechat_config_boolean (xfer_config_file_auto_accept_files)) )
          || ( (type == XFER_TYPE_CHAT_RECV)
-              && (weechat_config_boolean (xfer_config_file_auto_accept_chats)) ) )
+              && (weechat_config_boolean (xfer_config_file_auto_accept_chats)) )
+         || ( (type == XFER_TYPE_FILE_RECV)
+              && (xfer_auto_accept_nick (new_xfer->remote_nick, new_xfer->plugin_id)) ) )
         xfer_network_accept (new_xfer);
     else
         xfer_buffer_refresh (WEECHAT_HOTLIST_PRIVATE);
