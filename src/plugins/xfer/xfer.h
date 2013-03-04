@@ -21,6 +21,8 @@
 #define __WEECHAT_XFER_H 1
 
 #include <unistd.h>
+#include <gcrypt.h>
+#include <regex.h>
 
 #define weechat_plugin weechat_xfer_plugin
 #define XFER_PLUGIN_NAME "xfer"
@@ -57,6 +59,8 @@ enum t_xfer_status
     XFER_STATUS_DONE,                  /* transfer done                     */
     XFER_STATUS_FAILED,                /* transfer failed                   */
     XFER_STATUS_ABORTED,               /* transfer aborted by user          */
+    XFER_STATUS_HASHING,               /* the partial local file is being hashed */
+    XFER_STATUS_HASHED,                /* the received file has been hashed */
     /* number of xfer status */
     XFER_NUM_STATUS,
 };
@@ -75,8 +79,23 @@ enum t_xfer_error
     XFER_ERROR_RECV_BLOCK,             /* unable to recv block from sender  */
     XFER_ERROR_WRITE_LOCAL,            /* unable to write to local file     */
     XFER_ERROR_SEND_ACK,               /* unable to send ACK to sender      */
+    XFER_ERROR_HASH_MISMATCH,          /* CRC32 does not match              */
+    XFER_ERROR_HASH_RESUME_ERROR,      /* Other error with CRC32 hash       */
     /* number of errors */
     XFER_NUM_ERRORS,
+};
+
+/* hash status */
+
+enum t_hashing_status
+{
+    XFER_HASHING_INVALID = 0,          /* Hashing not being performed       */
+    XFER_HASHING_UNDERWAY,             /* Hash in progress                  */
+    XFER_HASHING_MATCH,                /* Hash finished and matches target  */
+    XFER_HASHING_MISMATCH,             /* Hash finished with mismatch       */
+    XFER_HASHING_RESUME_ERROR,         /* Hash failed while resuming        */
+    /* number of hash status */
+    XFER_NUM_HASHING,
 };
 
 /* xfer block size */
@@ -153,6 +172,9 @@ struct t_xfer
     time_t last_activity;              /* time of last byte received/sent   */
     unsigned long long bytes_per_sec;  /* bytes per second                  */
     unsigned long long eta;            /* estimated time of arrival         */
+    gcry_md_hd_t hash_handle;          /* Handle for crc32 hash             */
+    char *hash_target;                 /* The crc32 hash to check against   */
+    enum t_hashing_status hash_status; /* Hash status (hashing, match, ...) */
     struct t_xfer *prev_xfer;          /* link to previous xfer             */
     struct t_xfer *next_xfer;          /* link to next xfer                 */
 };
@@ -163,6 +185,7 @@ extern char *xfer_protocol_string[];
 extern char *xfer_status_string[];
 extern struct t_xfer *xfer_list, *last_xfer;
 extern int xfer_count;
+extern regex_t *xfer_crc32_preg;
 
 extern int xfer_valid (struct t_xfer *xfer);
 extern struct t_xfer *xfer_search_by_number (int number);

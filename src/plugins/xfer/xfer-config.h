@@ -50,6 +50,7 @@ extern struct t_config_option *xfer_config_file_auto_resume;
 extern struct t_config_option *xfer_config_file_auto_accept_files;
 extern struct t_config_option *xfer_config_file_auto_accept_chats;
 extern struct t_config_option *xfer_config_file_auto_accept_nicks;
+extern struct t_config_option *xfer_config_file_auto_crc32;
 
 extern int xfer_config_init ();
 extern int xfer_config_read ();

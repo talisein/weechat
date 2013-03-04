@@ -62,6 +62,7 @@ struct t_config_option *xfer_config_file_auto_resume;
 struct t_config_option *xfer_config_file_auto_accept_files;
 struct t_config_option *xfer_config_file_auto_accept_chats;
 struct t_config_option *xfer_config_file_auto_accept_nicks;
+struct t_config_option *xfer_config_file_auto_crc32;
 
 
 
@@ -313,6 +314,11 @@ xfer_config_init ()
            "specific server) or \"nick\" (for all servers); example: "
            "\"freenode.FlashCode,andrew\""),
         NULL, 0, 0, "", NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL);
+    xfer_config_file_auto_crc32 = weechat_config_new_option (
+        xfer_config_file, ptr_section,
+        "auto_crc32", "boolean",
+        N_("automatically check a CRC32 hash if a tag is in the filename"),
+        NULL, 0, 0, "off", NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL);
 
     return 1;
 }
