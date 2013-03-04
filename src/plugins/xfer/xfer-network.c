@@ -151,11 +151,29 @@ xfer_network_child_read_cb (void *arg_xfer, int fd)
                                 _("%s%s: unable to send ACK to sender"),
                                 weechat_prefix ("error"), XFER_PLUGIN_NAME);
                 break;
+            case XFER_ERROR_HASH_MISMATCH:
+                weechat_printf (NULL,
+                                _("%s%s: CRC32 mismatch vs. %s on file %s"),
+                                weechat_prefix ("error"), XFER_PLUGIN_NAME,
+                                xfer->hash_target, xfer->filename);
+                xfer->hash_status = XFER_HASHING_MISMATCH;
+                break;
+            case XFER_ERROR_HASH_RESUME_ERROR:
+                weechat_printf (NULL,
+                                _("%s%s: CRC32 error while resuming, unable "
+                                  "to complete hash"),
+                                weechat_prefix ("error"), XFER_PLUGIN_NAME);
+                xfer->hash_status = XFER_HASHING_RESUME_ERROR;
+                break;
         }
 
         /* read new DCC status */
         switch (bufpipe[0] - '0')
         {
+            case XFER_STATUS_CONNECTING:
+                xfer->status = XFER_STATUS_CONNECTING;
+                xfer_buffer_refresh (WEECHAT_HOTLIST_MESSAGE);
+                break;
             case XFER_STATUS_ACTIVE:
                 if (xfer->status == XFER_STATUS_CONNECTING)
                 {
@@ -174,6 +192,17 @@ xfer_network_child_read_cb (void *arg_xfer, int fd)
                 break;
             case XFER_STATUS_FAILED:
                 xfer_close (xfer, XFER_STATUS_FAILED);
+                xfer_buffer_refresh (WEECHAT_HOTLIST_MESSAGE);
+                break;
+            case XFER_STATUS_HASHING:
+                xfer->status = XFER_STATUS_HASHING;
+                xfer_buffer_refresh (WEECHAT_HOTLIST_MESSAGE);
+                break;
+            case XFER_STATUS_HASHED:
+                if (bufpipe[1] - '0' == XFER_NO_ERROR)
+                {
+                    xfer->hash_status = XFER_HASHING_MATCH;
+                }
                 xfer_buffer_refresh (WEECHAT_HOTLIST_MESSAGE);
                 break;
         }

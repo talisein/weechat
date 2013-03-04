@@ -63,7 +63,7 @@ char *xfer_protocol_string[] =             /* strings for protocols         */
 char *xfer_status_string[] =               /* strings for status            */
 { N_("waiting"), N_("connecting"),
   N_("active"), N_("done"), N_("failed"),
-  N_("aborted")
+  N_("aborted"), N_("hashing")
 };
 
 struct t_xfer *xfer_list = NULL;       /* list of files/chats               */
@@ -72,6 +72,7 @@ int xfer_count = 0;                    /* number of xfer                    */
 
 int xfer_signal_upgrade_received = 0;  /* signal "upgrade" received ?       */
 
+regex_t *xfer_crc32_preg = NULL;       /* crc32 filename regex              */
 
 void xfer_disconnect_all ();
 
@@ -633,6 +634,35 @@ xfer_new (const char *plugin_name, const char *plugin_id,
     else
         xfer_file_find_filename (new_xfer);
 
+    new_xfer->hash_handle = NULL;
+    new_xfer->hash_target = NULL;
+    new_xfer->hash_status = XFER_HASHING_INVALID;
+
+    if ( type == XFER_TYPE_FILE_RECV
+         && weechat_config_boolean (xfer_config_file_auto_crc32)
+         && xfer_crc32_preg )
+    {
+        regmatch_t match;
+        int found = regexec(xfer_crc32_preg, new_xfer->filename,
+                            1, &match, 0);
+        if (found != REG_NOMATCH)
+        {
+            gcry_error_t err;
+            err = gcry_md_open(&(new_xfer->hash_handle), GCRY_MD_CRC32, 0);
+            if (err)
+            {
+                weechat_printf (NULL,
+                                _("%s%s: Hashing error: %s/%s"),
+                                weechat_prefix ("error"), XFER_PLUGIN_NAME,
+                                gcry_strsource (err), gcry_strerror(err));
+            } else {
+                new_xfer->hash_target = weechat_strndup(new_xfer->filename
+                                                        + match.rm_so, 8);
+                new_xfer->hash_status = XFER_HASHING_UNDERWAY;
+            }
+        }
+    }
+
     /* write info message on core buffer */
     switch (type)
     {
@@ -787,6 +817,10 @@ xfer_free (struct t_xfer *xfer)
         free (xfer->unterminated_message);
     if (xfer->local_filename)
         free (xfer->local_filename);
+    if (xfer->hash_handle)
+        gcry_md_close(xfer->hash_handle);
+    if (xfer->hash_target)
+        free (xfer->hash_target);
 
     free (xfer);
 
@@ -1553,7 +1587,7 @@ xfer_debug_dump_cb (void *data, const char *signal, const char *type_data,
 int
 weechat_plugin_init (struct t_weechat_plugin *plugin, int argc, char *argv[])
 {
-    int i, upgrading;
+    int i, upgrading, re_error;
 
     weechat_plugin = plugin;
 
@@ -1590,6 +1624,25 @@ weechat_plugin_init (struct t_weechat_plugin *plugin, int argc, char *argv[])
     if (upgrading)
         xfer_upgrade_load ();
 
+    /* init filename crc32 regex */
+    xfer_crc32_preg = malloc(sizeof(regex_t));
+    if( (re_error = regcomp(xfer_crc32_preg, "[0-9A-F]{8}[^0-9A-F]+",
+                            REG_EXTENDED | REG_ICASE)) )
+    {
+        size_t size;
+        char *buf;
+
+        size = regerror(re_error, xfer_crc32_preg, NULL, 0);
+        buf = malloc(size);
+        regerror(re_error, xfer_crc32_preg, buf, size);
+        weechat_printf (NULL,
+                        "%s%s: Failed to compile regex crc32_preg: %s",
+                        weechat_prefix ("error"), XFER_PLUGIN_NAME,
+                        buf);
+
+        free(buf);
+    }
+
     return WEECHAT_RC_OK;
 }
 
@@ -1609,6 +1662,11 @@ weechat_plugin_end (struct t_weechat_plugin *plugin)
         xfer_upgrade_save ();
     else
         xfer_disconnect_all ();
+
+    if (xfer_crc32_preg) {
+        regfree(xfer_crc32_preg);
+        free(xfer_crc32_preg);
+    }
 
     return WEECHAT_RC_OK;
 }
