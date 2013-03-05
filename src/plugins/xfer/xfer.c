@@ -1653,6 +1653,8 @@ weechat_plugin_init (struct t_weechat_plugin *plugin, int argc, char *argv[])
                         buf);
 
         free(buf);
+        free(xfer_crc32_preg);
+        xfer_crc32_preg = NULL;
     }
 
     return WEECHAT_RC_OK;
