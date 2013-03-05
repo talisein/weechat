@@ -1638,7 +1638,7 @@ weechat_plugin_init (struct t_weechat_plugin *plugin, int argc, char *argv[])
 
     /* init filename crc32 regex */
     xfer_crc32_preg = malloc(sizeof(regex_t));
-    if( (re_error = regcomp(xfer_crc32_preg, "([^0-9A-Z]{1}|^)[0-9A-F]{8}([^0-9A-Z]{1}|$)",
+    if( (re_error = regcomp(xfer_crc32_preg, "([^0-9A-Z]|^)[0-9A-F]{8}([^0-9A-Z]|$)",
                             REG_EXTENDED | REG_ICASE)) )
     {
         size_t size;
