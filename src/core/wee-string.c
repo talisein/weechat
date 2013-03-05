@@ -1768,7 +1768,7 @@ string_iconv_fprintf (FILE *file, const char *data, ...)
 char *
 string_format_size (unsigned long long size)
 {
-    char *unit_name[] = { N_("bytes"), N_("KB"), N_("MB"), N_("GB") };
+    char *unit_name[] = { N_("bytes"), N_("KiB"), N_("MiB"), N_("GiB") };
     char *unit_format[] = { "%.0f", "%.1f", "%.02f", "%.02f" };
     float unit_divide[] = { 1, 1024, 1024*1024, 1024*1024*1024 };
     char format_size[128], str_size[128];
