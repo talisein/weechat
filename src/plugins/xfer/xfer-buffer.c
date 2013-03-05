@@ -117,10 +117,10 @@ xfer_buffer_refresh (const char *hotlist)
 	                    snprintf(str_hash, sizeof (str_hash), " (%s)", _("Hashing"));
                         break;
                     case XFER_HASHING_MATCH:
-	                    snprintf(str_hash, sizeof (str_hash), " (%s)", _("Hash OK"));
+	                    snprintf(str_hash, sizeof (str_hash), " (%s)", _("CRC32 OK"));
                         break;
                     case XFER_HASHING_MISMATCH:
-	                    snprintf(str_hash, sizeof (str_hash), " (%s)", _("Hash Mismatch"));
+	                    snprintf(str_hash, sizeof (str_hash), " (%s)", _("CRC32 Mismatch"));
                         break;
                     case XFER_HASHING_RESUME_ERROR:
 	                    snprintf(str_hash, sizeof (str_hash), " (%s)", _("Hash Error"));
