@@ -656,8 +656,20 @@ xfer_new (const char *plugin_name, const char *plugin_id,
                                 weechat_prefix ("error"), XFER_PLUGIN_NAME,
                                 gcry_strsource (err), gcry_strerror(err));
             } else {
+                /* The regex can match with the checksum at the
+                 * beginning of the filename. So we check if that's
+                 * the case. Then copy the checksum from the filename
+                 * to hash_target.
+                 */
+                regoff_t offset;
+                char c = new_xfer->filename[match.rm_so];
+                if ( ( c >= '0' && c <= '9' ) || ( c >= 'A' && c <= 'F' )
+                     || ( c>= 'a' && c <= 'f' ) )
+                    offset = match.rm_so;
+                else
+                    offset = match.rm_so + 1;
                 new_xfer->hash_target = weechat_strndup(new_xfer->filename
-                                                        + match.rm_so, 8);
+                                                        + offset, 8);
                 new_xfer->hash_status = XFER_HASHING_UNDERWAY;
             }
         }
@@ -1626,7 +1638,7 @@ weechat_plugin_init (struct t_weechat_plugin *plugin, int argc, char *argv[])
 
     /* init filename crc32 regex */
     xfer_crc32_preg = malloc(sizeof(regex_t));
-    if( (re_error = regcomp(xfer_crc32_preg, "[0-9A-F]{8}[^0-9A-F]+",
+    if( (re_error = regcomp(xfer_crc32_preg, "([^0-9A-Z]{1}|^)[0-9A-F]{8}([^0-9A-Z]{1}|$)",
                             REG_EXTENDED | REG_ICASE)) )
     {
         size_t size;
