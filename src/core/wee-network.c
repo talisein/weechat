@@ -570,12 +570,17 @@ network_connect (int sock, const struct sockaddr *addr, socklen_t addrlen)
     fd_set write_fds;
     int ready, value;
     socklen_t len;
+    struct timeval timeout;
 
-    if (connect (sock, addr, addrlen) == 0)
-        return 1;
-
-    if (errno != EINPROGRESS)
+    while ( (ready = connect (sock, addr, addrlen)) < 0 )
+    {
+        if (errno == EINPROGRESS) break;
+        if (errno == EINTR) continue;
         return 0;
+    }
+
+    if (ready == 0)
+        return 1;
 
     /* for non-blocking sockets, the connect() may fail with EINPROGRESS,
      * if this happens, we wait for writability on socket and check
@@ -585,14 +590,30 @@ network_connect (int sock, const struct sockaddr *addr, socklen_t addrlen)
     {
         FD_ZERO (&write_fds);
         FD_SET (sock, &write_fds);
-        ready = select (sock + 1, NULL, &write_fds, NULL, NULL);
+        timeout.tv_sec = 5;
+        timeout.tv_usec = 0;
+        ready = select (sock + 1, NULL, &write_fds, NULL, &timeout);
         if (ready > 0)
         {
             len = sizeof (value);
             if (getsockopt (sock, SOL_SOCKET, SO_ERROR, &value, &len) == 0)
             {
-                return (value == 0) ? 1 : 0;
+                if (value == 0)
+                    return 1;
+                if (value == EINTR)
+                    return network_connect(sock, addr, addrlen);
+                return 0;
             }
+        }
+        else if (ready < 0)
+        {
+            if (errno == EINTR) continue;
+            return 0;
+        }
+        else if (ready == 0)
+        {
+            /* Timeout */
+            return 0;
         }
     }
 
