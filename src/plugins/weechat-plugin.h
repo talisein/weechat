@@ -47,7 +47,7 @@ struct timeval;
  * please change the date with current one; for a second change at same
  * date, increment the 01, otherwise please keep 01.
  */
-#define WEECHAT_PLUGIN_API_VERSION "20121208-01"
+#define WEECHAT_PLUGIN_API_VERSION "20130305-01"
 
 /* macros for defining plugin infos */
 #define WEECHAT_PLUGIN_NAME(__name)                                     \
@@ -189,6 +189,7 @@ struct t_weechat_plugin
     char *version;                     /* plugin version                    */
     char *license;                     /* license                           */
     char *charset;                     /* charset used by plugin            */
+    void *userdata;                    /* userdata                          */
     int debug;                         /* debug level for plugin (0=off)    */
     struct t_weechat_plugin *prev_plugin; /* link to previous plugin        */
     struct t_weechat_plugin *next_plugin; /* link to next plugin            */
@@ -201,6 +202,8 @@ struct t_weechat_plugin
 
     /* plugins */
     const char *(*plugin_get_name) (struct t_weechat_plugin *plugin);
+    void (*plugin_set_userdata) (struct t_weechat_plugin *plugin, void *userdata);
+    void *(*plugin_get_userdata) (struct t_weechat_plugin *plugin);
 
     /* strings */
     void (*charset_set) (struct t_weechat_plugin *plugin, const char *charset);
@@ -917,6 +920,10 @@ extern int weechat_plugin_end (struct t_weechat_plugin *plugin);
 /* plugins */
 #define weechat_plugin_get_name(__plugin)                               \
     weechat_plugin->plugin_get_name(__plugin)
+#define weechat_plugin_set_userdata(__plugin, __userdata)               \
+    weechat_plugin->plugin_set_userdata(__plugin, __userdata)
+#define weechat_plugin_get_userdata(__plugin)                           \
+    weechat_plugin->plugin_get_userdata(__plugin)
 
 /* strings */
 #define weechat_charset_set(__charset)                                  \

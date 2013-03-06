@@ -146,6 +146,26 @@ plugin_get_name (struct t_weechat_plugin *plugin)
 }
 
 /*
+ * Sets the userdata of a plugin
+ */
+
+void
+plugin_set_userdata (struct t_weechat_plugin *plugin, void *userdata)
+{
+    if (plugin) plugin->userdata = userdata;
+}
+
+/*
+ * Gets the userdata of a plugin
+ */
+
+void*
+plugin_get_userdata (struct t_weechat_plugin *plugin)
+{
+    return (plugin) ? plugin->userdata : NULL;
+}
+
+/*
  * Checks if extension of filename is allowed by option
  * "weechat.plugin.extension".
  *
@@ -495,6 +515,8 @@ plugin_load (const char *filename, int argc, char **argv)
 
         /* functions */
         new_plugin->plugin_get_name = &plugin_get_name;
+        new_plugin->plugin_set_userdata = &plugin_set_userdata;
+        new_plugin->plugin_get_userdata = &plugin_get_userdata;
 
         new_plugin->charset_set = &plugin_api_charset_set;
         new_plugin->iconv_to_internal = &string_iconv_to_internal;
