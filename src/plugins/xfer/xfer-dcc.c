@@ -313,6 +313,12 @@ xfer_dcc_recv_file_child (struct t_xfer *xfer)
                                 XFER_NO_ERROR);
     }
 
+    /* make socket non-blocking */
+    flags = fcntl (xfer->sock, F_GETFL);
+    if (flags == -1)
+        flags = 0;
+    fcntl (xfer->sock, F_SETFL, flags | O_NONBLOCK);
+
     /* first connect to sender (blocking) */
     if (!weechat_network_connect_to (xfer->proxy, xfer->sock,
                                      xfer->remote_address, xfer->port))
@@ -325,12 +331,6 @@ xfer_dcc_recv_file_child (struct t_xfer *xfer)
     /* connection is OK, change DCC status (inform parent process) */
     xfer_network_write_pipe (xfer, XFER_STATUS_ACTIVE,
                              XFER_NO_ERROR);
-
-    /* make socket non-blocking */
-    flags = fcntl (xfer->sock, F_GETFL);
-    if (flags == -1)
-        flags = 0;
-    fcntl (xfer->sock, F_SETFL, flags | O_NONBLOCK);
 
     last_sent = time (NULL);
     ack_enabled = 1;
