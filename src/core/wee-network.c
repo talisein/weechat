@@ -590,7 +590,7 @@ network_connect (int sock, const struct sockaddr *addr, socklen_t addrlen)
     {
         FD_ZERO (&write_fds);
         FD_SET (sock, &write_fds);
-        timeout.tv_sec = 5;
+        timeout.tv_sec = 14;
         timeout.tv_usec = 0;
         ready = select (sock + 1, NULL, &write_fds, NULL, &timeout);
         if (ready > 0)
