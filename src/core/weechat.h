@@ -83,11 +83,6 @@
     #define DIR_SEPARATOR_CHAR  '/'
 #endif
 
-/* some systems like GNU/Hurd do not define PATH_MAX */
-#ifndef PATH_MAX
-    #define PATH_MAX 4096
-#endif
-
 /* internal charset */
 #define WEECHAT_INTERNAL_CHARSET "UTF-8"
 
@@ -100,6 +95,7 @@ extern struct timeval weechat_current_start_timeval;
 extern int weechat_upgrade_count;
 extern int weechat_quit;
 extern char *weechat_home;
+extern char *weechat_dir_absolute_path;
 extern char *weechat_local_charset;
 extern int weechat_plugin_no_dlclose;
 extern int weechat_no_gnutls;
