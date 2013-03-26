@@ -362,7 +362,6 @@ completion_list_add_filename_cb (void *data,
     char *path_d, *path_b, *p, *d_name;
     char *real_prefix, *prefix;
     char *buf;
-    int buf_len;
     DIR *dp;
     struct dirent *entry;
     struct stat statbuf;
@@ -372,11 +371,6 @@ completion_list_add_filename_cb (void *data,
     (void) data;
     (void) completion_item;
     (void) buffer;
-
-    buf_len = PATH_MAX;
-    buf = malloc (buf_len);
-    if (!buf)
-        return WEECHAT_RC_OK;
 
     completion->add_space = 0;
 
@@ -400,23 +394,27 @@ completion_list_add_filename_cb (void *data,
         }
     }
 
-    snprintf (buf, buf_len, "%s", completion->base_word + strlen (prefix));
+    buf = strdup(completion->base_word + strlen (prefix));
+    if (!buf)
+        goto err1;
+
     p = strrchr (buf, DIR_SEPARATOR_CHAR);
     if (p)
     {
         p[0] = '\0';
-        path_d = strdup (buf);
+        path_d = buf;
         p++;
         path_b = strdup (p);
     }
     else
     {
         path_d = strdup ("");
-        path_b = strdup (buf);
+        path_b = buf;
     }
 
-    sprintf (buf, "%s%s%s", real_prefix, DIR_SEPARATOR, path_d);
-    d_name = strdup (buf);
+    d_name = string_strconcat(real_prefix, DIR_SEPARATOR, path_d, NULL);
+    if (!d_name)
+        goto err2;
     dp = opendir (d_name);
     if (dp != NULL)
     {
@@ -427,33 +425,38 @@ completion_list_add_filename_cb (void *data,
                 if (strcmp (entry->d_name, ".") == 0 || strcmp (entry->d_name, "..") == 0)
                     continue;
 
-                snprintf (buf, buf_len, "%s%s%s",
-                          d_name, DIR_SEPARATOR, entry->d_name);
-                if (stat (buf, &statbuf) == -1)
+                buf = string_strconcat(d_name, DIR_SEPARATOR, entry->d_name, NULL);
+                if (!buf || stat (buf, &statbuf) == -1)
                     continue;
 
-                snprintf (buf, buf_len, "%s%s%s%s%s%s",
-                          prefix,
-                          ((strcmp(prefix, "") == 0)
-                           || strchr(prefix, DIR_SEPARATOR_CHAR)) ? "" : DIR_SEPARATOR,
-                          path_d,
-                          strcmp(path_d, "") == 0 ? "" : DIR_SEPARATOR,
-                          entry->d_name,
-                          S_ISDIR(statbuf.st_mode) ? DIR_SEPARATOR : "");
-
-                gui_completion_list_add (completion, buf,
-                                         0, WEECHAT_LIST_POS_SORT);
+                free (buf);
+                buf = string_strconcat(prefix,
+                                       ((strcmp(prefix, "") == 0)
+                                        || strchr(prefix, DIR_SEPARATOR_CHAR)) ? "" : DIR_SEPARATOR,
+                                       path_d,
+                                       strcmp(path_d, "") == 0 ? "" : DIR_SEPARATOR,
+                                       entry->d_name,
+                                       S_ISDIR(statbuf.st_mode) ? DIR_SEPARATOR : "",
+                                       NULL);
+                if (buf)
+                {
+                    gui_completion_list_add (completion, buf,
+                                             0, WEECHAT_LIST_POS_SORT);
+                    free (buf);
+                }
             }
         }
         closedir (dp);
     }
 
+
     free (d_name);
-    free (prefix);
-    free (real_prefix);
+ err2:
     free (path_d);
     free (path_b);
-    free (buf);
+ err1:
+    free (prefix);
+    free (real_prefix);
 
     return WEECHAT_RC_OK;
 }
