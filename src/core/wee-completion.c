@@ -412,7 +412,7 @@ completion_list_add_filename_cb (void *data,
         path_b = buf;
     }
 
-    d_name = string_strconcat(real_prefix, DIR_SEPARATOR, path_d);
+    d_name = string_strconcat(real_prefix, DIR_SEPARATOR, path_d, NULL);
     if (!d_name)
         goto err2;
     dp = opendir (d_name);
@@ -425,18 +425,19 @@ completion_list_add_filename_cb (void *data,
                 if (strcmp (entry->d_name, ".") == 0 || strcmp (entry->d_name, "..") == 0)
                     continue;
 
-                buf = string_strconcat(d_name, DIR_SEPARATOR, entry->d_name);
+                buf = string_strconcat(d_name, DIR_SEPARATOR, entry->d_name, NULL);
                 if (!buf || stat (buf, &statbuf) == -1)
                     continue;
 
                 free (buf);
                 buf = string_strconcat(prefix,
-                                     ((strcmp(prefix, "") == 0)
-                                      || strchr(prefix, DIR_SEPARATOR_CHAR)) ? "" : DIR_SEPARATOR,
-                                     path_d,
-                                     strcmp(path_d, "") == 0 ? "" : DIR_SEPARATOR,
-                                     entry->d_name,
-                                     S_ISDIR(statbuf.st_mode) ? DIR_SEPARATOR : "");
+                                       ((strcmp(prefix, "") == 0)
+                                        || strchr(prefix, DIR_SEPARATOR_CHAR)) ? "" : DIR_SEPARATOR,
+                                       path_d,
+                                       strcmp(path_d, "") == 0 ? "" : DIR_SEPARATOR,
+                                       entry->d_name,
+                                       S_ISDIR(statbuf.st_mode) ? DIR_SEPARATOR : "",
+                                       NULL);
                 if (buf)
                 {
                     gui_completion_list_add (completion, buf,

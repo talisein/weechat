@@ -251,7 +251,7 @@ struct t_weechat_plugin
     char *(*string_eval_expression )(const char *expr,
                                      struct t_hashtable *pointers,
                                      struct t_hashtable *extra_vars);
-    char *(*string_strconcat) (const char *string1, ...);
+    __attribute__((sentinel)) char *(*string_strconcat) (const char *string1, ...);
 
     /* UTF-8 strings */
     int (*utf8_has_8bits) (const char *string);

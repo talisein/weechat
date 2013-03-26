@@ -85,7 +85,7 @@ fifo_remove_old_pipes ()
 
             if (strncmp (entry->d_name, FIFO_FILENAME_PREFIX, prefix_len) == 0)
             {
-                buf = weechat_string_strconcat(weechat_home, dir_separator, entry->d_name);
+                buf = weechat_string_strconcat(weechat_home, dir_separator, entry->d_name, NULL);
                 if (buf)
                 {
                     if (stat (buf, &statbuf) != -1)
