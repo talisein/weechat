@@ -31,6 +31,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <errno.h>
 
 #include "weechat.h"
 #include "wee-config-file.h"
@@ -2073,9 +2074,9 @@ config_file_write_internal (struct t_config_file *config_file,
     if (!config_file->file)
     {
         gui_chat_printf (NULL,
-                         _("%sError: cannot create file \"%s\""),
+                         _("%sError: cannot create file \"%s\": %s"),
                          gui_chat_prefix[GUI_CHAT_PREFIX_ERROR],
-                         filename2);
+                         filename2, strerror(errno));
         goto error;
     }
 
@@ -2124,23 +2125,48 @@ config_file_write_internal (struct t_config_file *config_file,
     }
 
     if (fflush (config_file->file) != 0)
+    {
+        gui_chat_printf (NULL,
+                         _("%sError: cannot flush file \"%s\": %s"),
+                         gui_chat_prefix[GUI_CHAT_PREFIX_ERROR],
+                         filename2, strerror(errno));
         goto error;
+    }
 
     /* close temp file */
-    fclose (config_file->file);
+    rc = fclose (config_file->file);
     config_file->file = NULL;
+    if (rc != 0)
+    {
+        gui_chat_printf (NULL,
+                         _("%sError: cannot close file \"%s\": %s"),
+                         gui_chat_prefix[GUI_CHAT_PREFIX_ERROR],
+                         filename2, strerror(errno));
+	    goto error;
+    }
 
     /* update file mode */
-    chmod (filename2, 0600);
+    if (chmod (filename2, 0600) != 0)
+    {
+        gui_chat_printf (NULL,
+                         _("%sError: cannot change permissions on file \"%s\": %s"),
+                         gui_chat_prefix[GUI_CHAT_PREFIX_ERROR],
+                         filename2, strerror(errno));
+        goto error;
+    }
 
     /* rename temp file to target file */
-    rc = rename (filename2, filename);
+    if (rename (filename2, filename) != 0)
+    {
+        gui_chat_printf (NULL,
+                         _("%sError: cannot rename file \"%s\" to \"%s\": %s"),
+                         gui_chat_prefix[GUI_CHAT_PREFIX_ERROR],
+                         filename2, filename, strerror(errno));
+        goto error;
+    }
 
     free (filename);
     free (filename2);
-
-    if (rc != 0)
-        return WEECHAT_CONFIG_WRITE_ERROR;
 
     return WEECHAT_CONFIG_WRITE_OK;
 
