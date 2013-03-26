@@ -2151,7 +2151,7 @@ string_stpcpy (char *dest, const char *src)
  * Implementation adapted from glib/gstrfuncs.c (LGPLv2+)
  */
 
-__attribute__((sentinel)) char *
+WEECHAT_SENTINEL char *
 string_strconcat (const char *string1, ...)
 {
     size_t  l;

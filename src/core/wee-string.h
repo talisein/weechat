@@ -80,6 +80,6 @@ extern char *string_replace_with_callback (const char *string,
                                            char *(*callback)(void *data, const char *text),
                                            void *callback_data,
                                            int *errors);
-__attribute__((sentinel)) extern char *string_strconcat (const char *string1, ...);
+WEECHAT_SENTINEL extern char *string_strconcat (const char *string1, ...);
 
 #endif /* __WEECHAT_STRING_H */

@@ -150,6 +150,13 @@ struct timeval;
 #define WEECHAT_HOOK_SIGNAL_INT                     "int"
 #define WEECHAT_HOOK_SIGNAL_POINTER                 "pointer"
 
+/* Provide macros to feature GCC function attribute */
+#if     __GNUC__ >= 4
+#define WEECHAT_SENTINEL __attribute__((__sentinel__))
+#else
+#define WEECHAT_SENTINEL
+#endif
+
 /* macro to format string with variable args, using dynamic buffer size */
 #define weechat_va_format(__format)                                     \
     va_list argptr;                                                     \
@@ -251,7 +258,7 @@ struct t_weechat_plugin
     char *(*string_eval_expression )(const char *expr,
                                      struct t_hashtable *pointers,
                                      struct t_hashtable *extra_vars);
-    __attribute__((sentinel)) char *(*string_strconcat) (const char *string1, ...);
+    WEECHAT_SENTINEL char *(*string_strconcat) (const char *string1, ...);
 
     /* UTF-8 strings */
     int (*utf8_has_8bits) (const char *string);
