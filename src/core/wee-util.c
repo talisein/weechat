@@ -718,3 +718,33 @@ util_version_number (const char *version)
     return (version_int[0] << 24) | (version_int[1] << 16)
         | (version_int[2] << 8) | version_int[3];
 }
+
+/*
+ * Return the canonicalized absolute pathname, NULL if error.
+ *
+ * Note: result must be freed after use.
+ */
+
+char *
+util_realpath (const char *filename)
+{
+#if _POSIX_C_SOURCE >= 200809L
+    char *resolved_path = realpath(filename, NULL);
+    return resolved_path;
+#else
+    #ifdef PATH_MAX
+    char resolved_path[PATH_MAX];
+    #else
+    char resolved_path[4096];
+    #endif
+
+    if( realpath(filename, resolved_path) )
+    {
+        return strdup(resolved_path);
+    }
+    else
+    {
+        return NULL;
+    }
+#endif
+}
