@@ -131,52 +131,56 @@ enum t_hashing_status
 struct t_xfer
 {
     /* data received by xfer to initiate a transfer */
-    char *plugin_name;                 /* plugin name                       */
-    char *plugin_id;                   /* id used by plugin                 */
-    enum t_xfer_type type;             /* xfer type (send/recv file)        */
-    enum t_xfer_protocol protocol;     /* xfer protocol (for file transfer) */
-    char *remote_nick;                 /* remote nick                       */
-    char *local_nick;                  /* local nick                        */
-    char *charset_modifier;            /* string for charset modifier_data  */
-    char *filename;                    /* filename                          */
-    unsigned long long size;           /* file size                         */
-    char *proxy;                       /* proxy to use (optional)           */
-    unsigned long local_address;       /* local IP address                  */
-    unsigned long remote_address;      /* remote IP address                 */
-    int port;                          /* remote port                       */
+    char *plugin_name;                      /* plugin name                       */
+    char *plugin_id;                        /* id used by plugin                 */
+    enum t_xfer_type type;                  /* xfer type (send/recv file)        */
+    enum t_xfer_protocol protocol;          /* xfer protocol (for file transfer) */
+    char *remote_nick;                      /* remote nick                       */
+    char *local_nick;                       /* local nick                        */
+    char *charset_modifier;                 /* string for charset modifier_data  */
+    char *filename;                         /* filename                          */
+    unsigned long long size;                /* file size                         */
+    char *proxy;                            /* proxy to use (optional)           */
+    struct sockaddr_storage local_address;  /* local IP address                  */
+    socklen_t local_addrlen;                /* local sockaddr length             */
+    char *local_address_str;                /* local IP address as string        */
+    struct sockaddr_storage remote_address; /* remote IP address                 */
+    socklen_t remote_addrlen;               /* remote sockaddr length            */
+    char *remote_address_str;               /* remote IP address as string       */
+    int port;                               /* remote port                       */
 
     /* internal data */
-    enum t_xfer_status status;         /* xfer status (waiting, sending,..) */
-    struct t_gui_buffer *buffer;       /* buffer (for chat only)            */
-    char *remote_nick_color;           /* color name for remote nick        */
-                                       /* (returned by IRC plugin)          */
-    int fast_send;                     /* fast send file: does not wait ACK */
-    int blocksize;                     /* block size for sending file       */
-    time_t start_time;                 /* time when xfer started            */
-    time_t start_transfer;             /* time when xfer transfer started   */
-    int sock;                          /* socket for connection             */
-    pid_t child_pid;                   /* pid of child process (send/recv)  */
-    int child_read;                    /* to read into child pipe           */
-    int child_write;                   /* to write into child pipe          */
-    struct t_hook *hook_fd;            /* hook for socket or child pipe     */
-    struct t_hook *hook_timer;         /* timeout for receiver accept       */
-    char *unterminated_message;        /* beginning of a message            */
-    int file;                          /* local file (read or write)        */
-    char *local_filename;              /* local filename (with path)        */
-    int filename_suffix;               /* suffix (like .1) if renaming file */
-    unsigned long long pos;            /* number of bytes received/sent     */
-    unsigned long long ack;            /* number of bytes received OK       */
-    unsigned long long start_resume;   /* start of resume (in bytes)        */
-    time_t last_check_time;            /* last time we checked bytes snt/rcv*/
-    unsigned long long last_check_pos; /* bytes sent/recv at last check     */
-    time_t last_activity;              /* time of last byte received/sent   */
-    unsigned long long bytes_per_sec;  /* bytes per second                  */
-    unsigned long long eta;            /* estimated time of arrival         */
-    gcry_md_hd_t hash_handle;          /* Handle for crc32 hash             */
-    char *hash_target;                 /* The crc32 hash to check against   */
-    enum t_hashing_status hash_status; /* Hash status (hashing, match, ...) */
-    struct t_xfer *prev_xfer;          /* link to previous xfer             */
-    struct t_xfer *next_xfer;          /* link to next xfer                 */
+    enum t_xfer_status status;              /* xfer status (waiting, sending,..) */
+    struct t_gui_buffer *buffer;            /* buffer (for chat only)            */
+    char *remote_nick_color;                /* color name for remote nick        */
+                                            /* (returned by IRC plugin)          */
+    int fast_send;                          /* fast send file: does not wait ACK */
+    int blocksize;                          /* block size for sending file       */
+    time_t start_time;                      /* time when xfer started            */
+    time_t start_transfer;                  /* time when xfer transfer started   */
+    int sock;                               /* socket for connection             */
+    pid_t child_pid;                        /* pid of child process (send/recv)  */
+    int child_read;                         /* to read into child pipe           */
+    int child_write;                        /* to write into child pipe          */
+    struct t_hook *hook_fd;                 /* hook for socket or child pipe     */
+    struct t_hook *hook_timer;              /* timeout for receiver accept       */
+    char *unterminated_message;             /* beginning of a message            */
+    int file;                               /* local file (read or write)        */
+    char *local_filename;                   /* local filename (with path)        */
+    int filename_suffix;                    /* suffix (like .1) if renaming file */
+    unsigned long long pos;                 /* number of bytes received/sent     */
+    unsigned long long ack;                 /* number of bytes received OK       */
+    unsigned long long start_resume;        /* start of resume (in bytes)        */
+    time_t last_check_time;                 /* last time we checked bytes snt/rcv*/
+    unsigned long long last_check_pos;      /* bytes sent/recv at last check     */
+    time_t last_activity;                   /* time of last byte received/sent   */
+    unsigned long long bytes_per_sec;       /* bytes per second                  */
+    unsigned long long eta;                 /* estimated time of arrival         */
+    gcry_md_hd_t hash_handle;               /* Handle for crc32 hash             */
+    char *hash_target;                      /* The crc32 hash to check against   */
+    enum t_hashing_status hash_status;      /* Hash status (hashing, match, ...) */
+    struct t_xfer *prev_xfer;               /* link to previous xfer             */
+    struct t_xfer *next_xfer;               /* link to next xfer                 */
 };
 
 extern struct t_weechat_plugin *weechat_xfer_plugin;

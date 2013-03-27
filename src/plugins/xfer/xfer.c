@@ -30,6 +30,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <arpa/inet.h>
 
 #include "../weechat-plugin.h"
 #include "xfer.h"
@@ -295,16 +296,13 @@ xfer_close (struct t_xfer *xfer, enum t_xfer_status status)
         if (XFER_IS_FILE(xfer->type))
         {
             weechat_printf (NULL,
-                            _("%s%s: file %s %s %s (%ld.%ld.%ld.%ld): %s"),
+                            _("%s%s: file %s %s %s (%s): %s"),
                             (xfer->status == XFER_STATUS_DONE) ? "" : weechat_prefix ("error"),
                             XFER_PLUGIN_NAME,
                             xfer->filename,
                             (xfer->type == XFER_TYPE_FILE_SEND) ? _("sent to") : _("received from"),
                             xfer->remote_nick,
-                            xfer->remote_address >> 24,
-                            (xfer->remote_address >> 16) & 0xff,
-                            (xfer->remote_address >> 8) & 0xff,
-                            xfer->remote_address & 0xff,
+                            xfer->remote_address_str,
                             (xfer->status == XFER_STATUS_DONE) ? _("OK") : _("FAILED"));
             xfer_network_child_kill (xfer);
         }
@@ -315,13 +313,10 @@ xfer_close (struct t_xfer *xfer, enum t_xfer_status status)
         {
             weechat_printf (xfer->buffer,
                             _("%s: chat closed with %s "
-                              "(%ld.%ld.%ld.%ld)"),
+                              "(%s)"),
                             XFER_PLUGIN_NAME,
                             xfer->remote_nick,
-                            xfer->remote_address >> 24,
-                            (xfer->remote_address >> 16) & 0xff,
-                            (xfer->remote_address >> 8) & 0xff,
-                            xfer->remote_address & 0xff);
+                            xfer->remote_address_str);
         }
     }
 
@@ -452,8 +447,12 @@ xfer_alloc ()
     /* default values */
     new_xfer->filename = NULL;
     new_xfer->size = 0;
-    new_xfer->local_address = 0;
-    new_xfer->remote_address = 0;
+    memset(&new_xfer->local_address, 0, sizeof(new_xfer->local_address));
+    new_xfer->local_addrlen = sizeof(new_xfer->local_address);
+    new_xfer->local_address_str = NULL;
+    memset(&new_xfer->remote_address, 0, sizeof(new_xfer->remote_address));
+    new_xfer->remote_addrlen = sizeof(new_xfer->remote_address);
+    new_xfer->remote_address_str = NULL;
     new_xfer->port = 0;
     new_xfer->remote_nick = NULL;
     new_xfer->local_nick = NULL;
@@ -558,11 +557,13 @@ xfer_new (const char *plugin_name, const char *plugin_id,
           enum t_xfer_type type, enum t_xfer_protocol protocol,
           const char *remote_nick, const char *local_nick,
           const char *charset_modifier, const char *filename,
-          unsigned long long size, const char *proxy, unsigned long address,
-          int port, int sock, const char *local_filename)
+          unsigned long long size, const char *proxy, struct sockaddr_storage *address,
+          socklen_t addrlen, int port, int sock, const char *local_filename)
 {
     struct t_xfer *new_xfer;
     const char *ptr_color;
+    char hbuf[NI_MAXHOST];
+    int rc;
 
     new_xfer = xfer_alloc ();
     if (!new_xfer)
@@ -595,17 +596,35 @@ xfer_new (const char *plugin_name, const char *plugin_id,
         new_xfer->filename = strdup (_("xfer chat"));
     new_xfer->size = size;
     new_xfer->proxy = (proxy) ? strdup (proxy) : NULL;
+    new_xfer->port = port;
+
+    rc = getnameinfo((struct sockaddr*)address, addrlen, hbuf,
+                     sizeof(hbuf), NULL, 0, NI_NUMERICHOST);
+    if (rc != 0)
+    {
+	    weechat_printf (NULL,
+	                    _("%s%s: Error interpreting DCC address: %s"),
+	                    weechat_prefix ("error"), XFER_PLUGIN_NAME,
+	                    gai_strerror(rc));
+    }
     if (XFER_IS_RECV(type))
     {
-        new_xfer->local_address = 0;
-        new_xfer->remote_address = address;
+        new_xfer->local_addrlen = sizeof(new_xfer->local_address);
+        memset(&(new_xfer->local_address), 0, new_xfer->local_addrlen);
+        new_xfer->local_address_str = strdup("");
+        memcpy(&(new_xfer->remote_address), address, addrlen);
+        new_xfer->remote_address_str = strdup(hbuf);
+        new_xfer->remote_addrlen = addrlen;
     }
     else
     {
-        new_xfer->local_address = address;
-        new_xfer->remote_address = 0;
+        memcpy(&new_xfer->local_address, address, addrlen);
+        new_xfer->local_address_str = strdup(hbuf);
+        new_xfer->local_addrlen = addrlen;
+        new_xfer->remote_addrlen = sizeof(new_xfer->remote_address);
+        memset(&new_xfer->remote_address, 0, new_xfer->remote_addrlen);
+        new_xfer->remote_address_str = strdup("");
     }
-    new_xfer->port = port;
 
     new_xfer->status = XFER_STATUS_WAITING;
     new_xfer->sock = sock;
@@ -661,14 +680,11 @@ xfer_new (const char *plugin_name, const char *plugin_id,
         case XFER_TYPE_FILE_RECV:
             weechat_printf (NULL,
                             _("%s: incoming file from %s "
-                              "(%ld.%ld.%ld.%ld, %s.%s), name: %s, %llu bytes "
+                              "(%s, %s.%s), name: %s, %llu bytes "
                               "(protocol: %s)"),
                             XFER_PLUGIN_NAME,
                             remote_nick,
-                            address >> 24,
-                            (address >> 16) & 0xff,
-                            (address >> 8) & 0xff,
-                            address & 0xff,
+                            hbuf,
                             plugin_name,
                             plugin_id,
                             filename,
@@ -693,13 +709,10 @@ xfer_new (const char *plugin_name, const char *plugin_id,
         case XFER_TYPE_CHAT_RECV:
             weechat_printf (NULL,
                             _("%s: incoming chat request from %s "
-                              "(%ld.%ld.%ld.%ld, %s.%s)"),
+                              "(%s, %s.%s)"),
                             XFER_PLUGIN_NAME,
                             remote_nick,
-                            address >> 24,
-                            (address >> 16) & 0xff,
-                            (address >> 8) & 0xff,
-                            address & 0xff,
+                            hbuf,
                             plugin_name,
                             plugin_id);
             xfer_buffer_refresh (WEECHAT_HOTLIST_MESSAGE);
@@ -803,6 +816,10 @@ xfer_free (struct t_xfer *xfer)
         free (xfer->charset_modifier);
     if (xfer->filename)
         free (xfer->filename);
+    if (xfer->local_address_str)
+        free (xfer->local_address_str);
+    if (xfer->remote_address_str)
+        free (xfer->remote_address_str);
     if (xfer->remote_nick_color)
         free (xfer->remote_nick_color);
     if (xfer->unterminated_message)
@@ -834,15 +851,16 @@ xfer_add_cb (void *data, const char *signal, const char *type_data,
     struct t_infolist *infolist;
     const char *plugin_name, *plugin_id, *str_type, *str_protocol;
     const char *remote_nick, *local_nick, *charset_modifier, *filename, *proxy;
-    int type, protocol, args, port_start, port_end, sock, port;
+    const char *addr_str, *port_str;
+    int type, protocol, args, port_start, port_end, sock, port, rc;
     const char *weechat_dir;
     char *dir1, *dir2, *filename2, *short_filename, *pos;
+    char port_buf[16];
     struct stat st;
-    struct hostent *host;
-    struct sockaddr_in addr;
+    struct addrinfo *ainfo;
+    struct addrinfo hints;
+    struct sockaddr_storage addr;
     socklen_t length;
-    struct in_addr tmpaddr;
-    unsigned long local_addr;
     unsigned long long file_size;
     struct t_xfer *ptr_xfer;
 
@@ -998,52 +1016,76 @@ xfer_add_cb (void *data, const char *signal, const char *type_data,
         }
         file_size = st.st_size;
     }
+    port = weechat_infolist_integer (infolist, "port");
+
+    /* Set addr */
+    memset (&hints, 0, sizeof (struct addrinfo));
+    hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV;
+    hints.ai_family = AF_UNSPEC; /* Allow IPv4 or IPv6 */
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = 0;
+    hints.ai_canonname = NULL;
+    hints.ai_addr = NULL;
+    hints.ai_next = NULL;
 
     if (XFER_IS_RECV(type))
     {
-        sscanf (weechat_infolist_string (infolist, "remote_address"), "%lu", &local_addr);
-        port = weechat_infolist_integer (infolist, "port");
+        addr_str = weechat_infolist_string (infolist, "remote_address");
+        snprintf(port_buf, sizeof(port_buf), "%d", port);
+        port_str = port_buf;
     }
     else
     {
-        /* get local IP address */
-        sscanf (weechat_infolist_string (infolist, "local_address"), "%lu", &local_addr);
-
-        memset (&addr, 0, sizeof (struct sockaddr_in));
-        addr.sin_family = AF_INET;
-        addr.sin_addr.s_addr = htonl (local_addr);
-
-        /* look up the IP address from network_own_ip, if set */
+        port_str = NULL;
         if (weechat_config_string(xfer_config_network_own_ip)
             && weechat_config_string(xfer_config_network_own_ip)[0])
         {
-            host = gethostbyname (weechat_config_string (xfer_config_network_own_ip));
-            if (host)
-            {
-                memcpy (&tmpaddr, host->h_addr_list[0], sizeof(struct in_addr));
-                local_addr = ntohl (tmpaddr.s_addr);
+            addr_str = weechat_config_string (xfer_config_network_own_ip);
+            hints.ai_flags = AI_NUMERICSERV;
+        }
+        else
+        {
+            addr_str = weechat_infolist_string (infolist, "local_address");
+        }
+    }
 
-                sock = weechat_infolist_integer (infolist, "socket");
-                if (sock > 0)
-                {
-                    memset (&addr, 0, sizeof (struct sockaddr_in));
-                    length = sizeof (addr);
-                    getsockname (sock, (struct sockaddr *) &addr, &length);
-                    addr.sin_family = AF_INET;
-                }
-            }
-            else
-            {
-                weechat_printf (NULL,
-                                _("%s%s: could not find address for \"%s\", "
-                                  "falling back to local IP"),
-                                weechat_prefix ("error"), XFER_PLUGIN_NAME,
-                                weechat_config_string (xfer_config_network_own_ip));
-            }
+    rc = getaddrinfo (addr_str, port_str, &hints, &ainfo);
+    if (rc == 0 && ainfo && ainfo->ai_addr)
+    {
+        memset (&addr,  0, sizeof (addr));
+        memcpy (&addr, ainfo->ai_addr, ainfo->ai_addrlen);
+        length = ainfo->ai_addrlen;
+        freeaddrinfo(ainfo);
+    }
+    else
+    {
+        /* Report appropriate error */
+        if (weechat_config_string(xfer_config_network_own_ip)
+            &&  weechat_config_string(xfer_config_network_own_ip)[0])
+        {
+            weechat_printf (NULL,
+                            _("%s%s: xfer.network.own_ip \"%s\" is invalid: %s."),
+                            weechat_prefix ("error"), XFER_PLUGIN_NAME,
+                            addr_str, gai_strerror(rc));
+        }
+        else
+        {
+            weechat_printf (NULL,
+                            _("%s%s: could not find address for \"%s\": %s."),
+                            weechat_prefix ("error"), XFER_PLUGIN_NAME,
+                            addr_str,
+                            gai_strerror(rc));
         }
 
+        if (filename2)
+            free (filename2);
+	    goto error;
+    }
+
+    if (XFER_IS_SEND(type))
+    {
         /* open socket for xfer */
-        sock = socket (AF_INET, SOCK_STREAM, 0);
+        sock = socket (addr.ss_family, SOCK_STREAM, 0);
         if (sock < 0)
         {
             weechat_printf (NULL,
@@ -1076,8 +1118,15 @@ xfer_add_cb (void *data, const char *signal, const char *type_data,
                     if (!xfer_port_in_use (port))
                     {
                         /* attempt to bind to the free port */
-                        addr.sin_port = htons (port);
-                        if (bind (sock, (struct sockaddr *) &addr, sizeof (addr)) == 0)
+                        if (addr.ss_family == AF_INET)
+                        {
+	                        ((struct sockaddr_in*)&addr)->sin_port = htons (port);
+                        }
+                        else
+                        {
+	                        ((struct sockaddr_in6*)&addr)->sin6_port = htons (port);
+                        }
+                        if (bind (sock, (struct sockaddr *) &addr, length) == 0)
                             break;
                     }
                     port++;
@@ -1091,12 +1140,17 @@ xfer_add_cb (void *data, const char *signal, const char *type_data,
         if (port == 0)
         {
             /* find port automatically */
-            addr.sin_port = 0;
-            if (bind (sock, (struct sockaddr *) &addr, sizeof (addr)) == 0)
+            if (bind (sock, (struct sockaddr *) &addr, length) == 0)
             {
-                length = sizeof (addr);
                 getsockname (sock, (struct sockaddr *) &addr, &length);
-                port = ntohs (addr.sin_port);
+                if (addr.ss_family == AF_INET)
+                {
+	                port = ntohs (((struct sockaddr_in*)&addr)->sin_port);
+                }
+                else
+                {
+	                port = ntohs (((struct sockaddr_in6*)&addr)->sin6_port);
+                }
             }
             else
                 port = -1;
@@ -1150,12 +1204,12 @@ xfer_add_cb (void *data, const char *signal, const char *type_data,
     if (XFER_IS_FILE(type))
         ptr_xfer = xfer_new (plugin_name, plugin_id, type, protocol,
                              remote_nick, local_nick, charset_modifier,
-                             short_filename, file_size, proxy, local_addr,
-                             port, sock, filename2);
+                             short_filename, file_size, proxy, &addr,
+                             length, port, sock, filename2);
     else
         ptr_xfer = xfer_new (plugin_name, plugin_id, type, protocol,
                              remote_nick, local_nick, charset_modifier, NULL,
-                             0, proxy, local_addr, port, sock, NULL);
+                             0, proxy, &addr, length, port, sock, NULL);
 
     if (!ptr_xfer)
     {
@@ -1408,11 +1462,9 @@ xfer_add_to_infolist (struct t_infolist *infolist, struct t_xfer *xfer)
         return 0;
     if (!weechat_infolist_new_var_string (ptr_item, "proxy", xfer->proxy))
         return 0;
-    snprintf (value, sizeof (value), "%lu", xfer->local_address);
-    if (!weechat_infolist_new_var_string (ptr_item, "local_address", value))
+    if (!weechat_infolist_new_var_string (ptr_item, "local_address", xfer->local_address_str))
         return 0;
-    snprintf (value, sizeof (value), "%lu", xfer->remote_address);
-    if (!weechat_infolist_new_var_string (ptr_item, "remote_address", value))
+    if (!weechat_infolist_new_var_string (ptr_item, "remote_address", xfer->remote_address_str))
         return 0;
     if (!weechat_infolist_new_var_integer (ptr_item, "port", xfer->port))
         return 0;
@@ -1506,8 +1558,8 @@ xfer_print_log ()
         weechat_log_printf ("  filename. . . . . . : '%s'",  ptr_xfer->filename);
         weechat_log_printf ("  size. . . . . . . . : %llu",  ptr_xfer->size);
         weechat_log_printf ("  proxy . . . . . . . : '%s'",  ptr_xfer->proxy);
-        weechat_log_printf ("  local_address . . . : %lu",   ptr_xfer->local_address);
-        weechat_log_printf ("  remote_address. . . : %lu",   ptr_xfer->remote_address);
+        weechat_log_printf ("  local_address . . . : %s" ,   ptr_xfer->local_address_str);
+        weechat_log_printf ("  remote_address. . . : %s",    ptr_xfer->remote_address_str);
         weechat_log_printf ("  port. . . . . . . . : %d",    ptr_xfer->port);
 
         weechat_log_printf ("  status. . . . . . . : %d (%s)",

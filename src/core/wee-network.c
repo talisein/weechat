@@ -627,56 +627,76 @@ network_connect (int sock, const struct sockaddr *addr, socklen_t addrlen)
  * process.
  *
  * Returns:
- *   1: OK
- *   0: error
+ *   >=0: Connected socket fd
+ *    -1: error
  */
 
 int
-network_connect_to (const char *proxy, int sock,
-                    unsigned long address, int port)
+network_connect_to (const char *proxy, struct sockaddr* address,
+                    socklen_t addrlen)
 {
     struct t_proxy *ptr_proxy;
-    struct sockaddr_in addr;
-    struct hostent *hostent;
-    char *ip4;
+    struct addrinfo *proxy_addrinfo = NULL;
+    struct addrinfo hints;
+    char port_str[16];
+    char ip[NI_MAXHOST];
+    int rc, port, sock = -1;
 
     ptr_proxy = NULL;
     if (proxy && proxy[0])
     {
         ptr_proxy = proxy_search (proxy);
         if (!ptr_proxy)
-            return 0;
+            return -1;
     }
 
     if (ptr_proxy)
     {
-        memset (&addr, 0, sizeof (addr));
-        addr.sin_addr.s_addr = htonl (address);
-        ip4 = inet_ntoa(addr.sin_addr);
+        /* Record address's ip address and port*/
+        if (getnameinfo(address, addrlen, ip, sizeof(ip), port_str, sizeof(port_str),
+                        NI_NUMERICHOST | NI_NUMERICSERV) != 0)
+            return -1;
+        port = atoi (port_str);
 
-        memset (&addr, 0, sizeof (addr));
-        addr.sin_port = htons (CONFIG_INTEGER(ptr_proxy->options[PROXY_OPTION_PORT]));
-        addr.sin_family = AF_INET;
-        hostent = gethostbyname (CONFIG_STRING(ptr_proxy->options[PROXY_OPTION_ADDRESS]));
-        if (!hostent)
-            return 0;
-        memcpy(&(addr.sin_addr), *(hostent->h_addr_list), sizeof(struct in_addr));
-        if (!network_connect (sock, (struct sockaddr *) &addr, sizeof (addr)))
-            return 0;
-        if (!network_pass_proxy (proxy, sock, ip4, port))
-            return 0;
+        /* Get sockaddr for proxy */
+        memset (&hints, 0, sizeof(hints));
+        hints.ai_family = AF_UNSPEC;
+        hints.ai_socktype = SOCK_STREAM;
+        hints.ai_flags = AI_NUMERICSERV;
+        snprintf (port_str, sizeof(port_str), "%d",
+                 CONFIG_INTEGER(ptr_proxy->options[PROXY_OPTION_PORT]));
+        if (getaddrinfo(CONFIG_STRING(ptr_proxy->options[PROXY_OPTION_ADDRESS]),
+                        port_str, &hints, &proxy_addrinfo) != 0)
+            return -1;
+
+        /* Connect and pass address to proxy */
+        sock = socket (proxy_addrinfo->ai_family, SOCK_STREAM, 0);
+        if (sock == -1)
+            goto error;
+        rc = network_connect (sock, proxy_addrinfo->ai_addr, proxy_addrinfo->ai_addrlen);
+        if (!rc)
+            goto error;
+        if (!network_pass_proxy(proxy, sock, ip, port))
+            goto error;
+        freeaddrinfo (proxy_addrinfo);
     }
     else
     {
-        memset (&addr, 0, sizeof (addr));
-        addr.sin_port = htons (port);
-        addr.sin_family = AF_INET;
-        addr.sin_addr.s_addr = htonl (address);
-        if (!network_connect (sock, (struct sockaddr *) &addr, sizeof (addr)))
-            return 0;
+        sock = socket (address->sa_family, SOCK_STREAM, 0);
+        if (sock == -1)
+            return -1;
+        if (!network_connect (sock, address, addrlen))
+            goto error;
     }
 
-    return 1;
+    return sock;
+
+error:
+    if (sock != -1)
+        close (sock);
+    if (proxy_addrinfo)
+        freeaddrinfo (proxy_addrinfo);
+    return -1;
 }
 
 /*

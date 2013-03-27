@@ -23,6 +23,7 @@
 #define __WEECHAT_WEECHAT_PLUGIN_H 1
 
 #include <sys/types.h>
+#include <sys/socket.h>
 
 struct t_config_option;
 struct t_gui_window;
@@ -799,8 +800,9 @@ struct t_weechat_plugin
     /* network */
     int (*network_pass_proxy) (const char *proxy, int sock,
                                const char *address, int port);
-    int (*network_connect_to) (const char *proxy, int sock,
-                               unsigned long address, int port);
+    int (*network_connect_to) (const char *proxy,
+                               struct sockaddr *address,
+                               socklen_t addrlen);
 
     /* infos */
     const char *(*info_get) (struct t_weechat_plugin *plugin,
@@ -1579,9 +1581,8 @@ extern int weechat_plugin_end (struct t_weechat_plugin *plugin);
 #define weechat_network_pass_proxy(__proxy, __sock, __address, __port)  \
     weechat_plugin->network_pass_proxy(__proxy, __sock, __address,      \
                                        __port)
-#define weechat_network_connect_to(__proxy, __sock, __address, __port)  \
-    weechat_plugin->network_connect_to(__proxy, __sock, __address,      \
-                                       __port)
+#define weechat_network_connect_to(__proxy, __address, __addrlen)       \
+    weechat_plugin->network_connect_to(__proxy, __address, __addrlen)
 
 /* infos */
 #define weechat_info_get(__info_name, __arguments)                      \
