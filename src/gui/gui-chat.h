@@ -27,6 +27,8 @@ struct t_gui_line;
 
 #define gui_chat_printf(buffer, argz...)                        \
     gui_chat_printf_date_tags(buffer, 0, NULL, ##argz)
+#define gui_chat_vprintf(buffer, argz)                          \
+    gui_chat_vprintf_date_tags(buffer, 0, NULL, argz)
 
 #define GUI_CHAT_TAG_NO_HIGHLIGHT "no_highlight"
 
@@ -75,11 +77,16 @@ extern int gui_chat_get_time_length ();
 extern void gui_chat_change_time_format ();
 extern char *gui_chat_build_string_prefix_message (struct t_gui_line *line);
 extern char *gui_chat_build_string_message_tags (struct t_gui_line *line);
-extern void gui_chat_printf_date_tags (struct t_gui_buffer *buffer,
-                                       time_t date, const char *tags,
-                                       const char *message, ...);
-extern void gui_chat_printf_y (struct t_gui_buffer *buffer, int y,
-                               const char *message, ...);
+WEECHAT_GNUC_PRINTF(4, 5) extern void gui_chat_printf_date_tags (struct t_gui_buffer *buffer,
+                                                                 time_t date, const char *tags,
+                                                                 const char *message, ...);
+extern void gui_chat_vprintf_date_tags (struct t_gui_buffer *buffer,
+                                        time_t date, const char *tags,
+                                        const char *message, va_list args);
+WEECHAT_GNUC_PRINTF(3, 4) extern void gui_chat_printf_y (struct t_gui_buffer *buffer, int y,
+                                                         const char *message, ...);
+extern void gui_chat_vprintf_y (struct t_gui_buffer *buffer, int y,
+                                const char *message, va_list args);
 extern void gui_chat_print_lines_waiting_buffer ();
 extern int gui_chat_hsignal_quote_line_cb (void *data, const char *signal,
                                            struct t_hashtable *hashtable);

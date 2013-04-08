@@ -620,6 +620,7 @@ plugin_load (const char *filename, int argc, char **argv)
         new_plugin->config_color_default = &config_file_option_color_default;
         new_plugin->config_write_option = &config_file_write_option;
         new_plugin->config_write_line = &config_file_write_line;
+        new_plugin->config_vwrite_line = &config_file_vwrite_line;
         new_plugin->config_write = &config_file_write;
         new_plugin->config_read = &config_file_read;
         new_plugin->config_reload = &config_file_reload;
@@ -640,8 +641,11 @@ plugin_load (const char *filename, int argc, char **argv)
         new_plugin->prefix = &plugin_api_prefix;
         new_plugin->color = &plugin_api_color;
         new_plugin->printf_date_tags = &gui_chat_printf_date_tags;
+        new_plugin->vprintf_date_tags = &gui_chat_vprintf_date_tags;
         new_plugin->printf_y = &gui_chat_printf_y;
+        new_plugin->vprintf_y = &gui_chat_vprintf_y;
         new_plugin->log_printf = &log_printf;
+        new_plugin->log_vprintf = &log_vprintf;
 
         new_plugin->hook_command = &hook_command;
         new_plugin->hook_command_run = &hook_command_run;

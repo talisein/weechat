@@ -26,7 +26,8 @@ extern int weechat_log_use_time;
 
 extern void log_init ();
 extern void log_close ();
-extern void log_printf (const char *message, ...);
+WEECHAT_GNUC_PRINTF(1, 2) extern void log_printf (const char *message, ...);
+extern void log_vprintf (const char *message, va_list args);
 extern void log_printf_hexa (const char *spaces, const char *string);
 extern int log_crash_rename ();
 

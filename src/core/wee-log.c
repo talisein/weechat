@@ -132,14 +132,28 @@ log_init ()
 void
 log_printf (const char *message, ...)
 {
-    char *ptr_buffer;
+    va_list args;
+
+    va_start(args, message);
+    log_vprintf(message, args);
+    va_end(args);
+}
+
+/*
+ * Writes a message in WeeChat log file.
+ */
+
+void
+log_vprintf (const char *message, va_list args)
+{
+    char *ptr_buffer, *vbuffer;
     static time_t seconds;
     struct tm *date_tmp;
 
     if (!weechat_log_file)
         return;
 
-    weechat_va_format (message);
+    vbuffer = string_strdup_vprintf(message, args);
     if (vbuffer)
     {
         /* keep only valid chars */

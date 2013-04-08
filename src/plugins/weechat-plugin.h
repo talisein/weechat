@@ -23,6 +23,7 @@
 #define __WEECHAT_WEECHAT_PLUGIN_H 1
 
 #include <sys/types.h>
+#include <stdarg.h>
 
 /* some systems like GNU/Hurd do not define PATH_MAX */
 #ifndef PATH_MAX
@@ -52,7 +53,7 @@ struct timeval;
  * please change the date with current one; for a second change at same
  * date, increment the 01, otherwise please keep 01.
  */
-#define WEECHAT_PLUGIN_API_VERSION "20121208-01"
+#define WEECHAT_PLUGIN_API_VERSION "20130408-01"
 
 /* macros for defining plugin infos */
 #define WEECHAT_PLUGIN_NAME(__name)                                     \
@@ -457,6 +458,9 @@ struct t_weechat_plugin
     int (*config_write_line) (struct t_config_file *config_file,
                               const char *option_name,
                               const char *value, ...);
+    int (*config_vwrite_line) (struct t_config_file *config_file,
+                               const char *option_name,
+                               const char *value, va_list args);
     int (*config_write) (struct t_config_file *config_file);
     int (*config_read) (struct t_config_file *config_file);
     int (*config_reload) (struct t_config_file *config_file);
@@ -486,9 +490,14 @@ struct t_weechat_plugin
     const char *(*color) (const char *color_name);
     void (*printf_date_tags) (struct t_gui_buffer *buffer, time_t date,
                               const char *tags, const char *message, ...);
+    void (*vprintf_date_tags) (struct t_gui_buffer *buffer, time_t date,
+                               const char *tags, const char *message, va_list args);
     void (*printf_y) (struct t_gui_buffer *buffer, int y,
                       const char *message, ...);
+    void (*vprintf_y) (struct t_gui_buffer *buffer, int y,
+                       const char *message, va_list args);
     void (*log_printf) (const char *message, ...);
+    void (*log_vprintf) (const char *message, va_list args);
 
     /* hooks */
     struct t_hook *(*hook_command) (struct t_weechat_plugin *plugin,
@@ -1258,6 +1267,8 @@ extern int weechat_plugin_end (struct t_weechat_plugin *plugin);
     weechat_plugin->config_write_option(__config, __option)
 #define weechat_config_write_line(__config, __option, __value...)       \
     weechat_plugin->config_write_line(__config, __option, ##__value)
+#define weechat_config_vwrite_line(__config, __option, __value)         \
+    weechat_plugin->config_vwrite_line(__config, __option, __value)
 #define weechat_config_write(__config)                                  \
     weechat_plugin->config_write(__config)
 #define weechat_config_read(__config)                                   \
@@ -1301,20 +1312,37 @@ extern int weechat_plugin_end (struct t_weechat_plugin *plugin);
 #define weechat_printf(__buffer, __message, __argz...)                  \
     weechat_plugin->printf_date_tags(__buffer, 0, NULL, __message,      \
                                      ##__argz)
+#define weechat_vprintf(__buffer, __message, __argz)                    \
+    weechat_plugin->vprintf_date_tags(__buffer, 0, NULL, __message,     \
+                                      __argz)
 #define weechat_printf_date(__buffer, __date, __message, __argz...)     \
     weechat_plugin->printf_date_tags(__buffer, __date, NULL,            \
                                      __message, ##__argz)
+#define weechat_vprintf_date(__buffer, __date, __message, __argz)       \
+    weechat_plugin->vprintf_date_tags(__buffer, __date, NULL,           \
+                                     __message, __argz)
 #define weechat_printf_tags(__buffer, __tags, __message, __argz...)     \
     weechat_plugin->printf_date_tags(__buffer, 0, __tags, __message,    \
                                      ##__argz)
+#define weechat_vprintf_tags(__buffer, __tags, __message, __argz)       \
+    weechat_plugin->vprintf_date_tags(__buffer, 0, __tags, __message,   \
+                                      __argz)
 #define weechat_printf_date_tags(__buffer, __date, __tags, __message,   \
                                  __argz...)                             \
     weechat_plugin->printf_date_tags(__buffer, __date, __tags,          \
                                      __message, ##__argz)
+#define weechat_vprintf_date_tags(__buffer, __date, __tags, __message,  \
+                                  __argz)                               \
+    weechat_plugin->vprintf_date_tags(__buffer, __date, __tags,         \
+                                      __message, __argz)
 #define weechat_printf_y(__buffer, __y, __message, __argz...)           \
     weechat_plugin->printf_y(__buffer, __y, __message, ##__argz)
+#define weechat_vprintf_y(__buffer, __y, __message, __argz)             \
+    weechat_plugin->vprintf_y(__buffer, __y, __message, __argz)
 #define weechat_log_printf(__message, __argz...)                        \
     weechat_plugin->log_printf(__message, ##__argz)
+#define weechat_log_vprintf(__message, __argz)                          \
+    weechat_plugin->log_vprintf(__message, __argz)
 
 /* hooks */
 #define weechat_hook_command(__command, __description, __args,          \
