@@ -2142,6 +2142,54 @@ string_stpcpy (char *dest, const char *src)
 }
 
 /*
+ * Like vsprintf, but returns a newly allocated buffer large enough to
+ * contain format.
+ *
+ * The returned string must be freed with free().
+ */
+
+char *
+string_strdup_vprintf (const char *format, va_list args)
+{
+#ifdef _GNU_SOURCE
+    char *vbuffer;
+
+    if (vasprintf(&vbuffer, format, args) == -1)
+        vbuffer = NULL;
+    return vbuffer;
+#else
+    va_list argptr;
+    int vaa_size, vaa_num;
+    char *vbuffer, *vaa_buffer2;
+
+    vaa_size = 1024;
+    vbuffer = malloc (vaa_size);
+    if (vbuffer)
+    {
+        while (1)
+        {
+            va_copy (argptr, args);
+            vaa_num = vsnprintf (vbuffer, vaa_size, format, argptr);
+            va_end (argptr);
+            if ((vaa_num >= 0) && (vaa_num < vaa_size))
+                break;
+            vaa_size = (vaa_num >= 0) ? vaa_num + 1 : vaa_size * 2;
+            vaa_buffer2 = realloc (vbuffer, vaa_size);
+            if (!vaa_buffer2)
+            {
+                free (vbuffer);
+                vbuffer = NULL;
+                break;
+            }
+            vbuffer = vaa_buffer2;
+        }
+    }
+
+    return vbuffer;
+#endif
+}
+
+/*
  * Concatenates a NULL-terminated list of strings into a newly
  * allocated string.
  *
@@ -2189,4 +2237,55 @@ string_strconcat (const char *string1, ...)
     va_end (args);
 
     return concat;
+}
+
+/*
+ * Like vsprintf, but returns a newly allocated buffer large enough to
+ * contain format.
+ *
+ * The returned string must be freed with free().
+ */
+
+WEECHAT_GNUC_PRINTF(1, 2) char *
+string_strdup_printf (const char *format, ...)
+{
+#ifdef _GNU_SOURCE
+    va_list argptr;
+    char *vbuffer;
+
+    va_start (argptr, format);
+    if (vasprintf(&vbuffer, format, argptr) == -1)
+        vbuffer = NULL;
+    va_end(argptr);
+    return vbuffer;
+#else
+    va_list argptr;
+    int vaa_size, vaa_num;
+    char *vbuffer, *vaa_buffer2;
+
+    vaa_size = 1024;
+    vbuffer = malloc (vaa_size);
+    if (vbuffer)
+    {
+        while (1)
+        {
+            va_start (argptr, format);
+            vaa_num = vsnprintf (vbuffer, vaa_size, format, argptr);
+            va_end (argptr);
+            if ((vaa_num >= 0) && (vaa_num < vaa_size))
+                break;
+            vaa_size = (vaa_num >= 0) ? vaa_num + 1 : vaa_size * 2;
+            vaa_buffer2 = realloc (vbuffer, vaa_size);
+            if (!vaa_buffer2)
+            {
+                free (vbuffer);
+                vbuffer = NULL;
+                break;
+            }
+            vbuffer = vaa_buffer2;
+        }
+    }
+
+    return vbuffer;
+#endif
 }

@@ -92,6 +92,15 @@
 #else
 #define WEECHAT_SENTINEL
 #endif
+#if     __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ > 4)
+#define WEECHAT_GNUC_PRINTF( format_idx, arg_idx )              \
+  __attribute__((__format__ (__printf__, format_idx, arg_idx)))
+#define WEECHAT_GNUC_FORMAT( arg_idx )                          \
+  __attribute__((__format_arg__ (arg_idx)))
+#else
+#define WEECHAT_GNUC_PRINTF( format_idx, arg_idx )
+#define WEECHAT_GNUC_FORMAT( arg_idx )
+#endif
 
 /* global variables and functions */
 extern int weechat_debug_core;

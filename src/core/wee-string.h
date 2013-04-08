@@ -81,5 +81,7 @@ extern char *string_replace_with_callback (const char *string,
                                            void *callback_data,
                                            int *errors);
 WEECHAT_SENTINEL extern char *string_strconcat (const char *string1, ...);
+extern char *string_strdup_vprintf (const char *format, va_list args);
+WEECHAT_GNUC_PRINTF(1, 2) extern char *string_strdup_printf (const char *format, ...);
 
 #endif /* __WEECHAT_STRING_H */
