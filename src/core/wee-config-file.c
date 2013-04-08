@@ -1983,6 +1983,30 @@ int
 config_file_write_line (struct t_config_file *config_file,
                         const char *option_name, const char *value, ...)
 {
+    va_list args;
+    int rc;
+
+    va_start(args, value);
+    rc = config_file_vwrite_line(config_file, option_name, value, args);
+    va_end(args);
+    return rc;
+}
+
+/*
+ * Writes a line in a configuration file.
+ *
+ * If value is NULL, then writes a section with [ ] around.
+ *
+ * Returns:
+ *   1: OK
+ *   0: error
+ */
+
+int
+config_file_vwrite_line (struct t_config_file *config_file,
+                         const char *option_name, const char *value, va_list args)
+{
+    char *vbuffer;
     int rc;
 
     if (!config_file || !option_name)
@@ -1990,7 +2014,7 @@ config_file_write_line (struct t_config_file *config_file,
 
     if (value && value[0])
     {
-        weechat_va_format (value);
+        vbuffer = string_strdup_vprintf(value, args);
         if (vbuffer)
         {
             if (vbuffer[0])

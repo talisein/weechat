@@ -592,10 +592,29 @@ void
 gui_chat_printf_date_tags (struct t_gui_buffer *buffer, time_t date,
                            const char *tags, const char *message, ...)
 {
+    va_list args;
+
+    va_start (args, message);
+    gui_chat_vprintf_date_tags (buffer, date, tags, message, args);
+    va_end (args);
+}
+
+/*
+ * Displays a message in a buffer with optional date and tags.
+ *
+ * Note: this function works only with formatted buffers (not buffers with free
+ * content).
+ */
+
+void
+gui_chat_vprintf_date_tags (struct t_gui_buffer *buffer, time_t date,
+                           const char *tags, const char *message, va_list ap)
+{
     time_t date_printed;
     int display_time, length, at_least_one_message_printed;
     char *pos, *pos_prefix, *pos_tab, *pos_end, *pos_lines;
     char *modifier_data, *new_msg, *ptr_msg, *lines_waiting;
+    char *vbuffer;
     struct t_gui_line *ptr_line;
 
     if (!gui_buffer_valid (buffer))
@@ -625,7 +644,7 @@ gui_chat_printf_date_tags (struct t_gui_buffer *buffer, time_t date,
             && (gui_chat_mute_buffer == buffer)))
         return;
 
-    weechat_va_format (message);
+    vbuffer = string_strdup_vprintf(message, ap);
     if (!vbuffer)
         return;
 
@@ -793,7 +812,25 @@ end:
 void
 gui_chat_printf_y (struct t_gui_buffer *buffer, int y, const char *message, ...)
 {
+    va_list args;
+
+    va_start(args, message);
+    gui_chat_vprintf_y(buffer, y, message, args);
+    va_end(args);
+}
+
+/*
+ * Displays a message on a line in a buffer with free content.
+ *
+ * Note: this function works only with free content buffers (not formatted
+ * buffers).
+ */
+
+void
+gui_chat_vprintf_y (struct t_gui_buffer *buffer, int y, const char *message, va_list args)
+{
     struct t_gui_line *ptr_line;
+    char *vbuffer;
     int i, num_lines_to_add;
 
     if (gui_init_ok)
@@ -808,7 +845,7 @@ gui_chat_printf_y (struct t_gui_buffer *buffer, int y, const char *message, ...)
             return;
     }
 
-    weechat_va_format (message);
+    vbuffer = string_strdup_vprintf(message, args);
     if (!vbuffer)
         return;
 

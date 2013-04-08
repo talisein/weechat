@@ -238,8 +238,10 @@ extern const char *config_file_option_color (struct t_config_option *option);
 extern const char *config_file_option_color_default (struct t_config_option *option);
 extern int config_file_write_option (struct t_config_file *config_file,
                                      struct t_config_option *option);
-extern int config_file_write_line (struct t_config_file *config_file,
-                                   const char *option_name, const char *value, ...);
+WEECHAT_GNUC_PRINTF(3, 4) extern int config_file_write_line (struct t_config_file *config_file,
+                                                             const char *option_name, const char *value, ...);
+extern int config_file_vwrite_line (struct t_config_file *config_file,
+                                    const char *option_name, const char *value, va_list args);
 extern int config_file_write (struct t_config_file *config_files);
 extern int config_file_read (struct t_config_file *config_file);
 extern int config_file_reload (struct t_config_file *config_file);
