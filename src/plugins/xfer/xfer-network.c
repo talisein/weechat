@@ -284,17 +284,35 @@ void
 xfer_network_recv_file_fork (struct t_xfer *xfer)
 {
     pid_t pid;
+    int rc;
 
     if (!xfer_network_create_pipe (xfer))
         return;
 
     if (xfer->start_resume > 0)
+    {
         xfer->file = open (xfer->local_filename,
-                           O_APPEND | O_WRONLY | O_NONBLOCK);
+                           O_WRONLY | O_NONBLOCK);
+        lseek (xfer->file, 0, SEEK_END);
+    }
     else
+    {
         xfer->file = open (xfer->local_filename,
                            O_CREAT | O_TRUNC | O_WRONLY | O_NONBLOCK,
                            0644);
+    }
+
+#if _XOPEN_SOURCE >= 600 || _POSIX_C_SOURCE >= 200112L
+    rc = posix_fallocate(xfer->file, 0, (off_t) xfer->size);
+    if (rc != 0)
+    {
+        weechat_printf(NULL,
+                       _("%s%s: Unable to allocate space for file: %s"),
+                       weechat_prefix("error"), XFER_PLUGIN_NAME,
+                       strerror(rc));
+        return;
+    }
+#endif
 
     switch (pid = fork ())
     {

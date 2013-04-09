@@ -325,14 +325,42 @@ xfer_close (struct t_xfer *xfer, enum t_xfer_status status)
          || (xfer->status == XFER_STATUS_ABORTED))
         && XFER_IS_FILE(xfer->type)
         && XFER_IS_RECV(xfer->type)
-        && xfer->local_filename
-        && xfer->pos == 0)
+        && xfer->local_filename)
     {
-        /* erase file only if really empty on disk */
-        if (stat (xfer->local_filename, &st) != -1)
+        if (xfer->pos == 0)
         {
-            if ((unsigned long long) st.st_size == 0)
+            if (stat (xfer->local_filename, &st) != -1)
+            {
+                if ((unsigned long long) st.st_size == 0
+#if _XOPEN_SOURCE >= 600 || _POSIX_C_SOURCE >= 200112L
+                    || ((unsigned long long) st.st_size == xfer->size) )
+#else
+                    )
+#endif
                 unlink (xfer->local_filename);
+            }
+        }
+        else
+        {
+#if _XOPEN_SOURCE >= 600 || _POSIX_C_SOURCE >= 200112L
+            if (xfer->file > 0) {
+                if (ftruncate(xfer->file, xfer->pos) != 0)
+                {
+                    weechat_printf (NULL,
+                                    _("%s%s: Unable to truncate file. You'll be "
+                                      "unable to resume: %s"),
+                                    weechat_prefix ("error"), XFER_PLUGIN_NAME,
+                                    strerror(errno));
+                }
+            }
+            else
+            {
+                weechat_printf (NULL,
+                                _("%s%s: Unable to truncate file because the "
+                                  "descriptor was closed unexpectedly."),
+                                weechat_prefix ("error"), XFER_PLUGIN_NAME);
+            }
+#endif
         }
     }
 
