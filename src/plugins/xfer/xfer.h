@@ -122,8 +122,10 @@ struct t_xfer
     char *filename;                    /* filename                          */
     unsigned long long size;           /* file size                         */
     char *proxy;                       /* proxy to use (optional)           */
-    unsigned long local_address;       /* local IP address                  */
-    unsigned long remote_address;      /* remote IP address                 */
+    struct sockaddr* local_address;    /* local IP address                  */
+    socklen_t local_addrlen;           /* local sockaddr length             */
+    struct sockaddr* remote_address;   /* remote IP address                 */
+    socklen_t remote_addrlen;          /* remote sockaddr length            */
     int port;                          /* remote port                       */
 
     /* internal data */
@@ -153,6 +155,8 @@ struct t_xfer
     time_t last_activity;              /* time of last byte received/sent   */
     unsigned long long bytes_per_sec;  /* bytes per second                  */
     unsigned long long eta;            /* estimated time of arrival         */
+    char *local_address_str;           /* local IP address as string        */
+    char *remote_address_str;          /* remote IP address as string       */
     struct t_xfer *prev_xfer;          /* link to previous xfer             */
     struct t_xfer *next_xfer;          /* link to next xfer                 */
 };
@@ -172,5 +176,8 @@ extern void xfer_send_signal (struct t_xfer *xfer, const char *signal);
 extern void xfer_free (struct t_xfer *xfer);
 extern int xfer_add_to_infolist (struct t_infolist *infolist,
                                  struct t_xfer *xfer);
-
+extern void xfer_set_remote_address (struct t_xfer *xfer,
+                                     struct sockaddr* addr,
+                                     socklen_t length,
+                                     char *addr_str);
 #endif /* __WEECHAT_XFER_H */
